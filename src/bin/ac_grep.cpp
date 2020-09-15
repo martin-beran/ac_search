@@ -57,12 +57,12 @@ std::vector<std::string> read_patterns(std::string_view file)
     return patterns;
 }
 
-bool search(ac::automaton& automaton, std::istream& is, std::string_view file)
+bool search(ac::automaton<>& automaton, std::istream& is, std::string_view file)
 {
     bool found = false;
     int pos = 0;
     ac::matcher matcher(automaton, 
-                        [file, pos](size_t i) {
+                        [file, pos](ac::automaton<>::index_type i) {
                             std::cout << file << ' ' << pos << ' ' << i <<
                                 std::endl;
                         });
