@@ -2,16 +2,29 @@
 
 namespace ac {
 
-template <class CharT> class basic_matcher {
+template <class CharT> class basic_automaton {
 public:
-    template <class Patterns>
-        explicit basic_matcher(const Patterns& /*patterns*/) {}
-    template <class Callback> bool step(CharT /*c*/, const Callback& /*callback*/) {
-        return false;
-    }
+    using value_type = CharT;
+    template <class InputIt>
+        explicit basic_automaton(InputIt first, InputIt last);
+private:
+    class builder {
+    public:
+    };
 };
 
-using matcher = basic_matcher<char>;
+template <class CharT, class Callback> class matcher {
+public:
+    using value_type = CharT;
+    using automaton_type = basic_automaton<value_type>;
+    matcher(const automaton_type& dfa, Callback callback);
+    bool step(value_type c);
+private:
+    const automaton_type& dfa;
+    Callback callback;
+};
+
+using automaton = basic_automaton<char>;
 
 }
 

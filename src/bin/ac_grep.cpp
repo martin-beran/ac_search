@@ -57,19 +57,18 @@ std::vector<std::string> read_patterns(std::string_view file)
     return patterns;
 }
 
-bool search(ac::matcher& matcher, std::istream& is, std::string_view file)
+bool search(ac::automaton& automaton, std::istream& is, std::string_view file)
 {
     bool found = false;
     int pos = 0;
-    for (char c; is.get(c); ++pos)
-        if (matcher.step(c,
-                         [file, pos]{
-                            std::cout << file << ':' << pos << ": found" <<
+    ac::matcher matcher(automaton, 
+                        [file, pos](size_t i) {
+                            std::cout << file << ' ' << pos << ' ' << i <<
                                 std::endl;
-                         }))
-        {
+                        });
+    for (char c; is.get(c); ++pos)
+        if (matcher.step(c))
             found = true;
-        }
     return found;
 }
 
@@ -88,16 +87,16 @@ int main(int argc, char* argv[])
     int status = EXIT_FAILURE;
     try {
         auto patterns = read_patterns(argv[1]);
-        ac::matcher matcher(patterns);
+        ac::automaton automaton(patterns.begin(), patterns.end());
         if (argc == 2) {
-            if (search(matcher, std::cin, "stdin"))
+            if (search(automaton, std::cin, "stdin"))
                 status = EXIT_SUCCESS;
         } else {
             for (int a = 2; a < argc; ++a) {
                 std::ifstream ifs(argv[a]);
                 ifs.exceptions(ifs.failbit);
                 ifs.exceptions(ifs.badbit);
-                if (search(matcher, ifs, argv[a]))
+                if (search(automaton, ifs, argv[a]))
                     status = EXIT_SUCCESS;
             }
         }
