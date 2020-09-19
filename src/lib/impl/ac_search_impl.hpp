@@ -1,5 +1,8 @@
 #pragma once
 
+#include <map>
+#include <queue>
+#include <set>
 #include <stdexcept>
 
 namespace ac {
@@ -9,24 +12,82 @@ namespace ac {
 template <class CharT, class State, class Index>
 class automaton<CharT, State, Index>::builder {
 public:
+    struct b_node {
+        index_type state = 0;
+        std::map<value_type, b_node> g;
+        const b_node* f = nullptr;
+        std::set<index_type> o;
+    };
     template <class InputIt>
         void add(index_type idx, InputIt first, InputIt last);
     void finish(automaton_type& dfa);
+    template <class Accu, class Func> Accu bfs(Func preorder);
+    b_node state0;
+    index_type n_states = 1;
 };
 
 template <class CharT, class State, class Index> template <class InputIt>
 void automaton<CharT, State, Index>::builder::add(index_type idx,
                                                   InputIt first, InputIt last)
 {
-    // TODO
-    first == last && idx == 0;
+    b_node* state = &state0;
+    for (; first != last; ++first) {
+        auto added = state->g.try_emplace(*first);
+        if (added.second) {
+            added.first->second.state = n_states;
+            if (++n_states == state_max)
+                throw std::range_error("Too many states");
+        }
+        state = &added.first->second;
+    }
+    state->o.insert(idx);
+}
+
+template <class CharT, class State, class Index>
+template <class Accu, class Func>
+Accu automaton<CharT, State, Index>::builder::bfs(Func preorder)
+{
+    std::queue<b_node*> queue;
+    Accu accu{};
+    queue.emplace(&state0);
+    while (!queue.empty()) {
+        preorder(accu, *queue.front());
+        for (auto& next: queue.front()->g)
+            queue.emplace(&next.second);
+        queue.pop();
+    }
+    return accu;
 }
 
 template <class CharT, class State, class Index>
 void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
 {
+    struct sizes {
+        size_t n_g;
+        size_t n_o;
+    };
+    sizes sz = bfs<sizes>(
+        [this](auto& sz, auto& node) {
+            for (auto &edge: node.g) {
+                auto back = node.f;
+                typename decltype(b_node::g)::const_iterator f;
+                while (back && (f = back->g.find(edge.first)) == back->g.end())
+                    back = back->f;
+                edge.second.f = back ? &f->second : &state0;
+                edge.second.o.insert(edge.second.f->o.begin(),
+                                     edge.second.f->o.end());
+            }
+            sz.n_g += node.g.size();
+            sz.n_o += node.o.size();
+        });
+    if (sz.n_g >= index_max)
+        throw std::range_error("Too many edges (transitions)");
+    if (sz.n_o >= index_max)
+        throw std::range_error("Too many outputs");
+    dfa.fgn.reserve(n_states + 1);
+    dfa.fge.reserve(sz.n_g + n_states); // space also for function f
+    dfa.o.reserve(sz.n_o);
     // TODO
-    dfa.fgn.size();
 }
 
 /*** automaton::edge *********************************************************/
@@ -45,9 +106,9 @@ automaton<CharT, State, Index>::automaton(InputIt first, InputIt last)
     builder bld;
     index_type i = 0;
     for (; first != last; ++first, ++i) {
-        bld.add(i, first->begin(), first->end());
         if (i == index_max)
             throw std::range_error("Pattern index too big");
+        bld.add(i, first->begin(), first->end());
     }
     bld.finish(*this);
 }
