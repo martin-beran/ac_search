@@ -52,7 +52,7 @@ public:
 private:
     const automaton_type& dfa;
     Callback callback;
-    state_type state = 0;
+    state_type state{};
 };
 
 }

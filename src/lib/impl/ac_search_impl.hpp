@@ -13,7 +13,7 @@ template <class CharT, class State, class Index>
 class automaton<CharT, State, Index>::builder {
 public:
     struct b_node {
-        index_type state = 0;
+        state_type state{};
         std::map<value_type, b_node> g;
         const b_node* f = nullptr;
         std::set<index_type> o;
@@ -66,8 +66,10 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
         size_t n_g;
         size_t n_o;
     };
+    std::vector<b_node*> nodes(n_states);
     sizes sz = bfs<sizes>(
-        [this](auto& sz, auto& node) {
+        [this, &nodes](auto& sz, auto& node) {
+            nodes[node.state] = &node;
             for (auto &edge: node.g) {
                 auto back = node.f;
                 typename decltype(b_node::g)::const_iterator f;
@@ -87,7 +89,20 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
     dfa.fgn.reserve(n_states + 1);
     dfa.fge.reserve(sz.n_g + n_states); // space also for function f
     dfa.o.reserve(sz.n_o);
-    // TODO
+    size_t i_fge = 0;
+    size_t i_o = 0;
+    for (auto pn: nodes) {
+        dfa.fgn.push_back(automaton_type::node{i_fge, i_o});
+        dfa.fge.push_back(automaton_type::edge{value_type{},
+                                        pn->f ? pn->f->state : state_type{}});
+        for (auto& e: pn->g)
+            dfa.fge.push_back(automaton_type::edge{e.first, e.second.state});
+        i_fge += 1 + pn->g.size();
+        for (auto& o: pn->o)
+            dfa.o.push_back(o);
+        i_o += pn->o.size();
+    }
+    dfa.fgn.push_back(automaton_type::node{i_fge, i_o});
 }
 
 /*** automaton::edge *********************************************************/
@@ -104,7 +119,7 @@ template <class CharT, class State, class Index> template <class InputIt>
 automaton<CharT, State, Index>::automaton(InputIt first, InputIt last)
 {
     builder bld;
-    index_type i = 0;
+    index_type i{};
     for (; first != last; ++first, ++i) {
         if (i == index_max)
             throw std::range_error("Pattern index too big");
@@ -126,7 +141,7 @@ auto automaton<CharT, State, Index>::g(state_type state, value_type c) const ->
     auto end = fge.begin() + fgn[state + 1].edges;
     auto edge = std::lower_bound(fge.begin() + fgn[state].edges + 1, end, c);
     if (edge == end || edge->value != c)
-        return state == 0 ? 0 : none;
+        return state == state_type{} ? state_type{} : none;
     else
         return edge->next;
 }
