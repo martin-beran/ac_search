@@ -15,10 +15,15 @@ public:
     using state_type = State;
     using index_type = Index;
     using automaton_type = automaton<value_type, state_type, index_type>;
+    static constexpr ptrdiff_t value_range = 1 +
+        ptrdiff_t(std::numeric_limits<value_type>::max()) -
+        ptrdiff_t(std::numeric_limits<value_type>::min());
+    static constexpr ptrdiff_t threshold_default = value_range / 4;
     template <class Callback>
         using matcher_type = matcher<automaton_type, Callback>;
     template <class InputIt>
-        explicit automaton(InputIt first, InputIt last);
+        explicit automaton(InputIt first, InputIt last,
+                           ptrdiff_t threshold = threshold_default);
     size_t size() const {
         return size_bytes(fgn) + size_bytes(fge) + size_bytes(o);
     }
@@ -45,6 +50,7 @@ private:
     std::vector<node> fgn;
     std::vector<edge> fge;
     std::vector<index_type> o;
+    ptrdiff_t threshold;
     template <class DFA, class Callback> friend class matcher;
 };
 

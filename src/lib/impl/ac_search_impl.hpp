@@ -69,26 +69,33 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
         size_t n_g;
         size_t n_o;
     };
-    for (value_type c = std::numeric_limits<value_type>::min();;) {
-        state0.g.insert({c, b_node{true}});
-        if (c < std::numeric_limits<value_type>::max())
-            ++c;
-        else
-            break;
-    }
     std::vector<b_node*> nodes(n_states);
     sizes sz = bfs<sizes>(
-        [this, &nodes](auto& sz, auto& node) {
-            nodes[node.state] = &node;
-            for (auto &edge: node.g) {
-                auto back = node.f;
-                typename decltype(b_node::g)::const_iterator f;
-                while (back && (f = back->g.find(edge.first)) == back->g.end())
-                    back = back->f;
-                edge.second.f = back ? &f->second : &state0;
-                edge.second.o.insert(edge.second.f->o.begin(),
-                                     edge.second.f->o.end());
+        [this, &nodes, &dfa](auto& sz, auto& node) {
+            if (&node == &state0 || node.g.size() >= size_t(dfa.threshold)) {
+                for (value_type c = std::numeric_limits<value_type>::min();;) {
+                    node.g.insert({c, b_node{true}});
+                    if (c < std::numeric_limits<value_type>::max())
+                        ++c;
+                    else
+                        break;
+                }
             }
+            nodes[node.state] = &node;
+            for (auto& edge: node.g)
+                if (!edge.second.null) {
+                    auto back = node.f;
+                    typename decltype(b_node::g)::const_iterator f;
+                    while (back &&
+                           ((f = back->g.find(edge.first)) == back->g.end() ||
+                            f->second.null))
+                    {
+                        back = back->f;
+                    }
+                    edge.second.f = back ? &f->second : &state0;
+                    edge.second.o.insert(edge.second.f->o.begin(),
+                                         edge.second.f->o.end());
+                }
             sz.n_g += node.g.size();
             sz.n_o += node.o.size();
         });
@@ -106,11 +113,7 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
         dfa.fge.push_back(automaton_type::edge{value_type{},
                                         pn->f ? pn->f->state : state_type{}});
         for (auto& e: pn->g)
-            if (e.second.null)
-                dfa.fge.push_back(automaton_type::edge{e.first, 0});
-            else
-                dfa.fge.push_back(automaton_type::edge{e.first,
-                                  e.second.state});
+            dfa.fge.push_back(automaton_type::edge{e.first, e.second.state});
         i_fge += 1 + pn->g.size();
         for (auto& o: pn->o)
             dfa.o.push_back(o);
@@ -130,7 +133,9 @@ bool automaton<CharT, State, Index>::edge::operator<(value_type c) const
 /*** automaton ***************************************************************/
 
 template <class CharT, class State, class Index> template <class InputIt>
-automaton<CharT, State, Index>::automaton(InputIt first, InputIt last)
+automaton<CharT, State, Index>::automaton(InputIt first, InputIt last,
+                                          ptrdiff_t threshold):
+    threshold(threshold)
 {
     builder bld;
     index_type i{};
@@ -152,12 +157,13 @@ template <class CharT, class State, class Index>
 auto automaton<CharT, State, Index>::g(state_type state, value_type c) const ->
     state_type
 {
+    auto begin = fge.begin() + ptrdiff_t(fgn[state].edges + 1);
     auto end = fge.begin() + ptrdiff_t(fgn[state + 1].edges);
-    auto edge = state == state_type{} ?
-        fge.begin() + ptrdiff_t(fgn[state].edges + 1) + ptrdiff_t(c) -
+    auto edge = end - begin == value_range ?
+        begin + ptrdiff_t(c) -
             ptrdiff_t(std::numeric_limits<value_type>::min()) :
-        std::lower_bound(fge.begin() + ptrdiff_t(fgn[state].edges + 1), end, c);
-    if (edge == end || edge->value != c)
+        std::lower_bound(begin, end, c);
+    if (edge == end || edge->value != c || edge->next == state_type{})
         return state == state_type{} ? state_type{} : none;
     else
         return edge->next;

@@ -111,7 +111,8 @@ void search(ac::automaton<>& automaton, std::istream& is)
 
 void usage(char* argv0)
 {
-    std::cerr << "usage: " << argv0 << " pattern_file [file]" << std::endl;
+    std::cerr << "usage: " << argv0 << " pattern_file [file] [threshold]" <<
+        std::endl;
 }
 
 } // namespace
@@ -119,12 +120,14 @@ void usage(char* argv0)
 int main(int argc, char* argv[])
 {
     std::ios_base::sync_with_stdio(false);
-    if (argc < 2 || argc > 3) {
+    if (argc < 2 || argc > 4) {
         usage(argv[0]);
         return EXIT_FAILURE;
     }
     int status = EXIT_FAILURE;
     try {
+        ptrdiff_t threshold =
+            argc > 3 ? std::stoll(argv[3]) : ac::automaton<>::threshold_default;
         stopwatch t_total;
         stopwatch t_read_patterns;
         auto patterns = read_patterns(argv[1]);
@@ -136,7 +139,7 @@ int main(int argc, char* argv[])
             " patterns_size=" << pat_sz <<
             " read_patterns=" << t_total << std::endl;
         stopwatch t_build_automaton;
-        ac::automaton automaton(patterns.begin(), patterns.end());
+        ac::automaton automaton(patterns.begin(), patterns.end(), threshold);
         t_build_automaton.stop();
         std::cout << "automaton_size=" << automaton.size() <<
             " build_automaton=" << t_build_automaton << std::endl;
