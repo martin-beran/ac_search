@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <limits>
 #include <vector>
 
@@ -18,6 +19,9 @@ public:
         using matcher_type = matcher<automaton_type, Callback>;
     template <class InputIt>
         explicit automaton(InputIt first, InputIt last);
+    size_t size() const {
+        return size_bytes(fgn) + size_bytes(fge) + size_bytes(o);
+    }
 private:
     static constexpr state_type none = std::numeric_limits<state_type>::max();
     static constexpr state_type state_max = none - 1;
@@ -35,6 +39,9 @@ private:
     class builder;
     state_type f(state_type state) const;
     state_type g(state_type state, value_type c) const;
+    template <class T> static size_t size_bytes(const T& v) {
+        return v.size() * sizeof(typename T::value_type);
+    }
     std::vector<node> fgn;
     std::vector<edge> fge;
     std::vector<index_type> o;

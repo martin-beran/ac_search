@@ -48,7 +48,7 @@ std::vector<std::string> read_patterns(std::string_view file)
                     else
                         invalid();
                 }
-                bin.push_back(c);
+                bin.push_back(char(c));
             } else
                 bin.push_back(*it);
         }

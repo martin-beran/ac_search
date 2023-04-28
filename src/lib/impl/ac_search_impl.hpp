@@ -34,7 +34,7 @@ void automaton<CharT, State, Index>::builder::add(index_type idx,
     for (; first != last; ++first) {
         auto added = state->g.try_emplace(*first);
         if (added.second) {
-            added.first->second.state = n_states;
+            added.first->second.state = state_type(n_states);
             if (++n_states == state_max)
                 throw std::range_error("Too many states");
         }
@@ -138,8 +138,9 @@ template <class CharT, class State, class Index>
 auto automaton<CharT, State, Index>::g(state_type state, value_type c) const ->
     state_type
 {
-    auto end = fge.begin() + fgn[state + 1].edges;
-    auto edge = std::lower_bound(fge.begin() + fgn[state].edges + 1, end, c);
+    auto end = fge.begin() + ptrdiff_t(fgn[state + 1].edges);
+    auto edge = std::lower_bound(fge.begin() + ptrdiff_t(fgn[state].edges + 1),
+                                 end, c);
     if (edge == end || edge->value != c)
         return state == state_type{} ? state_type{} : none;
     else
