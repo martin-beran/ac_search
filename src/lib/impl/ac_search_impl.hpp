@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <map>
 #include <queue>
 #include <set>
@@ -13,10 +14,11 @@ template <class CharT, class State, class Index>
 class automaton<CharT, State, Index>::builder {
 public:
     struct b_node {
+        bool null = false;
         state_type state{};
-        std::map<value_type, b_node> g;
+        std::map<value_type, b_node> g{};
         const b_node* f = nullptr;
-        std::set<index_type> o;
+        std::set<index_type> o{};
     };
     template <class InputIt>
         void add(index_type idx, InputIt first, InputIt last);
@@ -53,7 +55,8 @@ Accu automaton<CharT, State, Index>::builder::bfs(Func preorder)
     while (!queue.empty()) {
         preorder(accu, *queue.front());
         for (auto& next: queue.front()->g)
-            queue.emplace(&next.second);
+            if (!next.second.null)
+                queue.emplace(&next.second);
         queue.pop();
     }
     return accu;
@@ -66,6 +69,13 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
         size_t n_g;
         size_t n_o;
     };
+    for (value_type c = std::numeric_limits<value_type>::min();;) {
+        state0.g.insert({c, b_node{true}});
+        if (c < std::numeric_limits<value_type>::max())
+            ++c;
+        else
+            break;
+    }
     std::vector<b_node*> nodes(n_states);
     sizes sz = bfs<sizes>(
         [this, &nodes](auto& sz, auto& node) {
@@ -96,7 +106,11 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
         dfa.fge.push_back(automaton_type::edge{value_type{},
                                         pn->f ? pn->f->state : state_type{}});
         for (auto& e: pn->g)
-            dfa.fge.push_back(automaton_type::edge{e.first, e.second.state});
+            if (e.second.null)
+                dfa.fge.push_back(automaton_type::edge{e.first, 0});
+            else
+                dfa.fge.push_back(automaton_type::edge{e.first,
+                                  e.second.state});
         i_fge += 1 + pn->g.size();
         for (auto& o: pn->o)
             dfa.o.push_back(o);
@@ -139,8 +153,10 @@ auto automaton<CharT, State, Index>::g(state_type state, value_type c) const ->
     state_type
 {
     auto end = fge.begin() + ptrdiff_t(fgn[state + 1].edges);
-    auto edge = std::lower_bound(fge.begin() + ptrdiff_t(fgn[state].edges + 1),
-                                 end, c);
+    auto edge = state == state_type{} ?
+        fge.begin() + ptrdiff_t(fgn[state].edges + 1) + ptrdiff_t(c) -
+            ptrdiff_t(std::numeric_limits<value_type>::min()) :
+        std::lower_bound(fge.begin() + ptrdiff_t(fgn[state].edges + 1), end, c);
     if (edge == end || edge->value != c)
         return state == state_type{} ? state_type{} : none;
     else
