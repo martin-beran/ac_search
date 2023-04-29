@@ -110,7 +110,8 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
     size_t i_fge = 0;
     size_t i_o = 0;
     for (auto pn: nodes) {
-        dfa.fgn.push_back(automaton_type::node{i_fge, i_o});
+        dfa.fgn.push_back(automaton_type::node{index_type(i_fge),
+                          index_type(i_o)});
         dfa.fge.push_back(automaton_type::edge{value_type{},
                                         pn->f ? pn->f->state : state_type{}});
         for (auto& e: pn->g)
@@ -120,7 +121,7 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
             dfa.o.push_back(o);
         i_o += pn->o.size();
     }
-    dfa.fgn.push_back(automaton_type::node{i_fge, i_o});
+    dfa.fgn.push_back(automaton_type::node{index_type(i_fge), index_type(i_o)});
 }
 
 /*** automaton::edge *********************************************************/

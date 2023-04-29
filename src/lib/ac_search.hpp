@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <vector>
 
@@ -8,7 +9,7 @@ namespace ac {
 
 template <class DFA, class Callback> class matcher;
 
-template <class CharT = char, class State = unsigned, class Index = size_t>
+template <class CharT = char, class State = unsigned, class Index = uint32_t>
 class automaton {
 public:
     using value_type = CharT;
