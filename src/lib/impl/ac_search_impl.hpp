@@ -105,31 +105,26 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
     if (sz.n_o >= index_max)
         throw std::range_error("Too many outputs");
     dfa.fgn.reserve(n_states + 1);
-    dfa.fge.reserve(sz.n_g + n_states); // space also for function f
+    dfa.fge_value.reserve(sz.n_g + n_states); // space also for function f
+    dfa.fge_next.reserve(sz.n_g + n_states); // space also for function f
     dfa.o.reserve(sz.n_o);
     size_t i_fge = 0;
     size_t i_o = 0;
     for (auto pn: nodes) {
         dfa.fgn.push_back(automaton_type::node{index_type(i_fge),
                           index_type(i_o)});
-        dfa.fge.push_back(automaton_type::edge{value_type{},
-                                        pn->f ? pn->f->state : state_type{}});
-        for (auto& e: pn->g)
-            dfa.fge.push_back(automaton_type::edge{e.first, e.second.state});
+        dfa.fge_value.push_back(value_type{});
+        dfa.fge_next.push_back(pn->f ? pn->f->state : state_type{});
+        for (auto& e: pn->g) {
+            dfa.fge_value.push_back(e.first);
+            dfa.fge_next.push_back(e.second.state);
+        }
         i_fge += 1 + pn->g.size();
         for (auto& o: pn->o)
             dfa.o.push_back(o);
         i_o += pn->o.size();
     }
     dfa.fgn.push_back(automaton_type::node{index_type(i_fge), index_type(i_o)});
-}
-
-/*** automaton::edge *********************************************************/
-
-template <class CharT, class State, class Index>
-bool automaton<CharT, State, Index>::edge::operator<(value_type c) const
-{
-    return value < c;
 }
 
 /*** automaton ***************************************************************/
@@ -152,23 +147,24 @@ automaton<CharT, State, Index>::automaton(InputIt first, InputIt last,
 template <class CharT, class State, class Index>
 auto automaton<CharT, State, Index>::f(state_type state) const -> state_type
 {
-    return fge[fgn[state].edges].next;
+    return fge_next[fgn[state].edges];
 }
 
 template <class CharT, class State, class Index>
 auto automaton<CharT, State, Index>::g(state_type state, value_type c) const ->
     state_type
 {
-    auto begin = fge.begin() + ptrdiff_t(fgn[state].edges + 1);
-    auto end = fge.begin() + ptrdiff_t(fgn[state + 1].edges);
+    auto begin = fge_value.begin() + ptrdiff_t(fgn[state].edges + 1);
+    auto end = fge_value.begin() + ptrdiff_t(fgn[state + 1].edges);
     auto edge = end - begin == value_range ?
         begin + ptrdiff_t(c) -
             ptrdiff_t(std::numeric_limits<value_type>::min()) :
         std::lower_bound(begin, end, c);
-    if (edge == end || edge->value != c || edge->next == state_type{})
+    auto edge_next = fge_next[size_t(edge - fge_value.begin())];
+    if (edge == end || *edge != c || edge_next == state_type{})
         return state == state_type{} ? state_type{} : none;
     else
-        return edge->next;
+        return edge_next;
 }
 
 /*** matcher *****************************************************************/

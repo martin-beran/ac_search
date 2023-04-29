@@ -26,7 +26,8 @@ public:
         explicit automaton(InputIt first, InputIt last,
                            ptrdiff_t threshold = threshold_default);
     size_t size() const {
-        return size_bytes(fgn) + size_bytes(fge) + size_bytes(o);
+        return size_bytes(fgn) + size_bytes(fge_value) + size_bytes(fge_next) +
+            size_bytes(o);
     }
     size_t nodes() const {
         return fgn.size();
@@ -43,11 +44,6 @@ private:
         index_type edges;
         index_type out;
     };
-    struct edge {
-        value_type value;
-        state_type next;
-        bool operator<(value_type c) const;
-    };
     class builder;
     state_type f(state_type state) const;
     state_type g(state_type state, value_type c) const;
@@ -55,7 +51,8 @@ private:
         return v.size() * sizeof(typename T::value_type);
     }
     std::vector<node> fgn;
-    std::vector<edge> fge;
+    std::vector<value_type> fge_value;
+    std::vector<state_type> fge_next;
     std::vector<index_type> o;
     size_t n_full_size = 0;
     ptrdiff_t threshold;
