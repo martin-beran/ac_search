@@ -142,6 +142,8 @@ int main(int argc, char* argv[])
         ac::automaton automaton(patterns.begin(), patterns.end(), threshold);
         t_build_automaton.stop();
         std::cout << "automaton_size=" << automaton.size() <<
+            " nodes=" << automaton.nodes() <<
+            " full_size=" << automaton.full_size() <<
             " build_automaton=" << t_build_automaton << std::endl;
         if (argc == 2)
             search(automaton, std::cin);

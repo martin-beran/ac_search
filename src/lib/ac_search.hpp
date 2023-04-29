@@ -27,6 +27,12 @@ public:
     size_t size() const {
         return size_bytes(fgn) + size_bytes(fge) + size_bytes(o);
     }
+    size_t nodes() const {
+        return fgn.size();
+    }
+    size_t full_size() const {
+        return n_full_size;
+    }
 private:
     static constexpr state_type none = std::numeric_limits<state_type>::max();
     static constexpr state_type state_max = none - 1;
@@ -50,6 +56,7 @@ private:
     std::vector<node> fgn;
     std::vector<edge> fge;
     std::vector<index_type> o;
+    size_t n_full_size = 0;
     ptrdiff_t threshold;
     template <class DFA, class Callback> friend class matcher;
 };

@@ -80,6 +80,7 @@ void automaton<CharT, State, Index>::builder::finish(automaton_type& dfa)
                     else
                         break;
                 }
+                ++dfa.n_full_size;
             }
             nodes[node.state] = &node;
             for (auto& edge: node.g)
